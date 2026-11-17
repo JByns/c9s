@@ -98,7 +98,7 @@ Every `v*` tag builds release assets with GoReleaser:
 | Asset | Use |
 |---|---|
 | `c9s_<ver>_linux_amd64.deb` / `.rpm` | Debian/Ubuntu or RHEL/Rocky packages; installs `/usr/bin/c9s` |
-| `c9s_<ver>_linux_<arch>.tar.gz` | Plain binary for any Linux |
+| `c9s_linux_<arch>.tar.gz` | Plain binary for any Linux |
 
 ```bash
 # Debian / Ubuntu
@@ -108,7 +108,7 @@ sudo apt install ./c9s_*_linux_amd64.deb
 sudo dnf install ./c9s_*_linux_amd64.rpm
 
 # Any Linux
-tar xzf c9s_*_linux_amd64.tar.gz && sudo install c9s /usr/local/bin/
+tar xzf c9s_linux_amd64.tar.gz && sudo install c9s /usr/local/bin/
 ```
 
 ### From source

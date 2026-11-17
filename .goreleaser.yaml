@@ -10,12 +10,15 @@ builds:
     ldflags: ["-s -w -X main.version={{ .Version }}"]
 
 archives:
-  - formats: [tar.gz]
+  # No version in the name, so releases/latest/download/<name> always works.
+  - name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
     files: [README.md]
 
 nfpms:
   - package_name: c9s
     vendor: Severalnines
+    maintainer: JByns <jessie@severalnines.com>
     homepage: https://github.com/JByns/c9s
     description: Terminal UI client for ClusterControl, run on the controller
     formats: [deb, rpm]
