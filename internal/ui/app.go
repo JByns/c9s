@@ -479,7 +479,7 @@ func (a *App) tableKeys(ev *tcell.EventKey) *tcell.EventKey {
 				return nil
 			}
 			if ac.Write && !a.opts.AllowWrite {
-				a.flash("[yellow]read-only: start c9s with --write (or write: true in the context) to " + strings.ToLower(ac.Label))
+				a.flash("[yellow]read-only: quit and start c9s --write to " + strings.ToLower(ac.Label))
 				return nil
 			}
 			ac.Run(row)

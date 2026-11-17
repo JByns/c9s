@@ -3,12 +3,8 @@
 **c9s** is a terminal user interface (TUI) client for
 [ClusterControl](https://severalnines.com/clustercontrol/). It runs on the
 ClusterControl controller and gives operators a full-screen, keyboard-driven
-console for the database clusters that controller manages.
-
-SSH to the ClusterControl controller, type `c9s`, and you get a live,
-keyboard-driven view of every cluster that controller manages: health, alarms, jobs, backups, node
-operations, maintenance, failover, top queries and database logs, all in one
-SSH session and without a browser.
+console for the database clusters that controller manages: health, alarms,
+jobs, backups, node operations, maintenance, failover, top queries and logs.
 
 ```
 Controller: ct-jessie-cc1 [RO]     <0> all                    <enter> Node logs   <m>   Maintenance
@@ -16,7 +12,7 @@ Cmon:       https://localhost:9501 <1> Redis Cluster          <t>     Top       
 User:       dba                    <2> MySQL Galera Cluster   <a>     Alarms      <:>   Command
 Clusters:   7 (1 failed)           <3> PostgreSQL Streaming   <s>     Start       </>   Filter
 Alarms:     0                      <4> MySQL Replication      <S>     Stop        <d>   Describe
-c9s:        0.2.0                  <5> MongoDB Replica        <ctrl-r> Restart    <esc> Back
+c9s:        0.1.0                  <5> MongoDB Replica        <ctrl-r> Restart    <esc> Back
 ╔════════════════════════════ nodes(MSSQL_AO_Async)[2] ═════════════════════════════╗
 ║ CID  CLUSTER         HOST             IP          PORT  TYPE   ROLE       STATUS    ║
 ║  35  MSSQL_AO_Async  ct-jessie-node4  10.10.16.8  1433  mssql  PRIMARY    Online    ║
@@ -29,28 +25,438 @@ c9s:        0.2.0                  <5> MongoDB Replica        <ctrl-r> Restart  
 
 ## Contents
 
-- [How it works](#how-it-works)
-- [Requirements](#requirements)
-- [Install](#install)
-- [Quick start](#quick-start)
+**Getting started (follow in order)**
+
+1. [Before you start](#1-before-you-start)
+2. [Download c9s](#2-download-c9s)
+3. [Install c9s on the controller](#3-install-c9s-on-the-controller)
+4. [Start c9s and log in](#4-start-c9s-and-log-in)
+5. [Read the screen](#5-read-the-screen)
+6. [Your first five minutes: a guided tour](#6-your-first-five-minutes-a-guided-tour)
+7. [Turn on write mode to make changes](#7-turn-on-write-mode-to-make-changes)
+
+**Task guides**
+
+- [Task 1: Check cluster and node health](#task-1-check-cluster-and-node-health)
+- [Task 2: Review and acknowledge alarms](#task-2-review-and-acknowledge-alarms)
+- [Task 3: Follow or abort a job](#task-3-follow-or-abort-a-job)
+- [Task 4: Create a backup](#task-4-create-a-backup)
+- [Task 5: Restore a backup](#task-5-restore-a-backup)
+- [Task 6: Start, stop or restart a node](#task-6-start-stop-or-restart-a-node)
+- [Task 7: Put a cluster or node in maintenance](#task-7-put-a-cluster-or-node-in-maintenance)
+- [Task 8: Promote a replica (failover)](#task-8-promote-a-replica-failover)
+- [Task 9: Rolling restart of a cluster](#task-9-rolling-restart-of-a-cluster)
+- [Task 10: Find and kill a heavy query](#task-10-find-and-kill-a-heavy-query)
+- [Task 11: Read database log files](#task-11-read-database-log-files)
+
+**Reference**
+
+- [How c9s works](#how-c9s-works)
 - [How c9s logs in](#how-c9s-logs-in)
-- [The screen](#the-screen)
 - [Views](#views)
-- [The top 10 operational tasks](#the-top-10-operational-tasks)
-- [Read-only and write mode](#read-only-and-write-mode)
 - [Keyboard reference](#keyboard-reference)
 - [Command-line reference](#command-line-reference)
+- [Upgrade and uninstall](#upgrade-and-uninstall)
 - [Troubleshooting](#troubleshooting)
+- [FAQ](#faq)
 - [Development](#development)
 - [Limitations and roadmap](#limitations-and-roadmap)
 
 ---
 
-## How it works
+# Getting started
 
-c9s runs **on the ClusterControl controller**. You SSH to the controller and
-start it there; it does not run on a
-laptop or connect to a controller over the network.
+## 1. Before you start
+
+c9s runs **on the ClusterControl controller**, the machine where the `cmon`
+service runs. You SSH to that machine and start c9s there. It does not run on
+a laptop and does not connect to a controller over the network.
+
+Check these on the controller before you install:
+
+| Check | How | You need |
+|---|---|---|
+| You can SSH to the controller | `ssh root@<controller>` | A shell on the controller |
+| cmon is running | `systemctl status cmon` | `active (running)` |
+| CPU architecture | `uname -m` | `x86_64` → use the **amd64** files, `aarch64` → use the **arm64** files |
+| Linux distribution | `cat /etc/os-release` | Debian/Ubuntu → `.deb`, RHEL/Rocky/Alma/Oracle → `.rpm`, anything else → `.tar.gz` |
+| A ClusterControl user | Your ClusterControl login name | Its RSA key on the controller, or its password (see [step 4](#4-start-c9s-and-log-in)) |
+| Terminal size | Make your terminal window at least 120 × 30 | Smaller windows cut off columns |
+
+## 2. Download c9s
+
+Releases are published on the GitHub releases page:
+**https://github.com/JByns/c9s/releases**
+
+> The repository is private for now. Ask the owner to add your GitHub account
+> under **Settings → Collaborators** before you can see the releases.
+
+Each release has these files. Pick the one that matches your controller from
+the checks in step 1:
+
+| File | Use it on |
+|---|---|
+| `c9s_<version>_linux_amd64.deb` | Debian / Ubuntu, x86_64 |
+| `c9s_<version>_linux_arm64.deb` | Debian / Ubuntu, aarch64 |
+| `c9s_<version>_linux_amd64.rpm` | RHEL / Rocky / Alma / Oracle, x86_64 |
+| `c9s_<version>_linux_arm64.rpm` | RHEL / Rocky / Alma / Oracle, aarch64 |
+| `c9s_linux_amd64.tar.gz` | Any Linux, x86_64 (plain binary) |
+| `c9s_linux_arm64.tar.gz` | Any Linux, aarch64 (plain binary) |
+| `checksums.txt` | SHA-256 checksums of all files |
+
+Choose one way to get the file onto the controller:
+
+**Option A: download in a browser, then copy it to the controller.**
+From your own computer:
+
+```bash
+scp c9s_0.1.0_linux_amd64.rpm root@<controller>:/tmp/
+```
+
+**Option B: download directly on the controller with the GitHub CLI.**
+This needs the `gh` tool on the controller and a one-time `gh auth login`:
+
+```bash
+gh release download v0.1.0 -R JByns/c9s -p 'c9s_0.1.0_linux_amd64.rpm' -D /tmp
+```
+
+> `git clone` with your GitHub password does not work: GitHub no longer
+> accepts account passwords for git. You do not need to clone the repository
+> to use c9s; the release files are all you need.
+
+Optional: check the file is not corrupted. Download `checksums.txt` too and
+run, in the same folder:
+
+```bash
+sha256sum --ignore-missing -c checksums.txt
+```
+
+## 3. Install c9s on the controller
+
+Run **one** of these on the controller, as root or with `sudo`, in the folder
+where the file is.
+
+**Debian / Ubuntu:**
+
+```bash
+sudo apt install ./c9s_0.1.0_linux_amd64.deb
+```
+
+**RHEL / Rocky / Alma / Oracle:**
+
+```bash
+sudo dnf install ./c9s_0.1.0_linux_amd64.rpm
+```
+
+The packages install the program as `/usr/bin/c9s`.
+
+**Any other Linux (plain binary):**
+
+```bash
+tar xzf c9s_linux_amd64.tar.gz
+sudo install -m 0755 c9s /usr/local/bin/c9s
+```
+
+**Check the install:**
+
+```bash
+c9s version
+```
+
+You should see `c9s 0.1.0` (or the version you installed).
+
+## 4. Start c9s and log in
+
+On the controller, type:
+
+```bash
+c9s
+```
+
+c9s connects to the cmon on this machine and logs in as a ClusterControl
+user. What happens next depends on how the controller is set up for your
+Linux user:
+
+**Case A: no questions asked (key login).**
+If the controller has a ClusterControl client config for your Linux user
+(`~/.s9s/s9s.conf` or `/etc/s9s.conf`) with a user name, and that user's RSA
+key at `~/.s9s/<user>.key`, c9s logs in with the key and opens immediately.
+This is the usual case for `root` on a controller installed with the standard
+installer.
+
+**Case B: c9s asks for your user name and/or password.**
+If there is no client config or key, c9s asks:
+
+```
+ClusterControl user: admin
+Password for admin:
+```
+
+Type your ClusterControl login (the same user name and password you use to
+sign in to ClusterControl). The password is not shown while you type.
+
+**To log in as a different ClusterControl user**, name it:
+
+```bash
+c9s --user alice
+```
+
+c9s uses `~/.s9s/alice.key` if it exists, otherwise it asks for alice's
+password.
+
+When the login works, the **clusters** view opens. c9s always starts in
+**read-only** mode (`[RO]` in the header): you can look at everything, but
+nothing can be changed by accident. See [step 7](#7-turn-on-write-mode-to-make-changes)
+for making changes.
+
+If you see an error instead, go to [Troubleshooting](#troubleshooting).
+
+## 5. Read the screen
+
+```
+┌─ header ────────────────────────────────────────────────────────────────────────────┐
+│ ① controller info            ② cluster scopes    ③ keys for this view     logo      │
+├─ main table ────────────────────────────────────────────────────────────────────────┤
+│ ④ view(scope)[rows]                                                                  │
+│ ⑤ rows, coloured by status                                                           │
+├─ footer ────────────────────────────────────────────────────────────────────────────┤
+│ ⑥ path bar: controller:/Cluster/node/view/file              ⑦ ⟳ refresh  RO/RW     │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+| # | Part | What it tells you |
+|---|---|---|
+| ① | Controller info | Controller host name and mode (`[RO]` read-only / `[RW]` read-write), cmon address, your user, number of clusters (and how many failed), number of open alarms (red when above 0), c9s version |
+| ② | Cluster scopes | `<0> all` and `<1>`–`<9>` for the first nine clusters by ID. Press the number to show only that cluster in every view. |
+| ③ | Keys | The keys that work in the view you are looking at. Changes are listed even in read-only mode, so you can see what exists. |
+| ④ | Table title | View name, scope in brackets, row count, and the active filter, e.g. `nodes(MSSQL_AO_Async)[2]` or `jobs(all)[2] </backup>` |
+| ⑤ | Rows | **Green**: OK. **Orange/yellow**: warning or busy. **Red**: failed, offline or critical. |
+| ⑥ | Path bar | Where you are. `ct-jessie-cc1:/MSSQL_AO_Async/ct-jessie-node4/logs` means: controller `ct-jessie-cc1`, cluster `MSSQL_AO_Async`, node `ct-jessie-node4`, view `logs`. Spaces in cluster names show as `_`. |
+| ⑦ | Status | The refresh interval and how long ago the data was loaded, and `RO`/`RW`. Messages such as `job 1234 created` appear here for a few seconds. |
+
+The table refreshes on its own every 5 seconds.
+
+## 6. Your first five minutes: a guided tour
+
+Follow these steps once to learn everything you need. Nothing here changes
+your clusters. Watch the path bar at the bottom after each step.
+
+| Step | Press | What happens | Path bar shows |
+|---|---|---|---|
+| 1 | (start) `c9s` | The clusters view lists every cluster | `ct-jessie-cc1:/clusters` |
+| 2 | `↓` / `↑` | Move the highlight between rows | |
+| 3 | `enter` on a cluster | Opens the nodes of that cluster | `ct-jessie-cc1:/MSSQL_AO_Async/nodes` |
+| 4 | `enter` on a node | Opens the log files collected from that node | `ct-jessie-cc1:/MSSQL_AO_Async/ct-jessie-node4/logs` |
+| 5 | `esc` | Goes back one step (to nodes) | `ct-jessie-cc1:/MSSQL_AO_Async/nodes` |
+| 6 | `d` on a node | Shows everything cmon knows about that node (raw data). `esc` closes it. | |
+| 7 | `0` | Scope back to all clusters | |
+| 8 | `:` then type `jobs` and `enter` | Opens the jobs view | `ct-jessie-cc1:/jobs` |
+| 9 | `/` then type `backup` and `enter` | Shows only rows that contain "backup". The table title shows the filter, e.g. `jobs(all)[2] </backup>`. | |
+| 10 | `esc` | Clears the filter (press `esc` again to go back) | |
+| 11 | `2` (any number from the header) | Every view now shows only that cluster | `ct-jessie-cc1:/MySQL_Galera_Cluster/jobs` |
+| 12 | `:alarms`, `:backups`, `:top` | Jump to other views the same way | |
+| 13 | `?` | Help page with all keys. `esc` closes it. | |
+| 14 | `ctrl-c` (or `:q`) | Quit | |
+
+That is the whole navigation model:
+
+- **`enter` goes deeper, `esc` goes back.**
+- **`:` jumps to any view**, **`/` filters**, **`0`–`9` picks a cluster**.
+- **`d` shows the details** of any row.
+
+## 7. Turn on write mode to make changes
+
+c9s starts read-only. If you press a key that changes something (for example
+`ctrl-r` on a node), the status line says:
+
+```
+read-only: quit and start c9s --write to restart
+```
+
+To make changes, quit (`ctrl-c`) and start c9s again with `--write`:
+
+```bash
+c9s --write
+```
+
+The header now shows `[RW]` in red. Even in write mode:
+
+1. **Every change asks first.** A red **confirm** box shows what will happen.
+   Choose **OK** to go ahead or **Cancel** (or `esc`) to stop.
+2. **Risky changes need the name typed.** Stop node, promote, rolling restart
+   and restore ask you to type the node or cluster name exactly. If it does not
+   match, nothing happens and the status says `not confirmed`.
+3. **Every change runs as a ClusterControl job.** It is recorded in the
+   ClusterControl job list and audit log, under your user.
+4. **c9s opens the job's live log** right after it starts, so you can watch it.
+   Press `esc` to leave the log; the job keeps running.
+5. **Your ClusterControl permissions apply.** If your user is not allowed to do
+   something, cmon refuses and c9s shows the error.
+
+Tip: use read-only `c9s` for day-to-day watching, and `c9s --write` only when
+you plan to change something.
+
+---
+
+# Task guides
+
+Each guide lists the exact keys. Guides marked **(write)** need
+`c9s --write` (see [step 7](#7-turn-on-write-mode-to-make-changes)).
+
+## Task 1: Check cluster and node health
+
+1. Start `c9s`. The **clusters** view opens.
+2. Look at each row:
+   - `STATE`: `STARTED` is healthy; `DEGRADED` or `FAILURE` need attention (shown in red/orange).
+   - `NODES`: how many nodes are up out of the total.
+   - `ALARMS`: critical/warning alarm counts.
+   - `MAINT`: whether maintenance is active.
+   - `RECOVERY`: whether automatic recovery is on.
+3. Press `enter` on a cluster to see its **nodes**:
+   - `ROLE`: primary/master, replica/slave, and so on.
+   - `STATUS`: `Online`, `ShutDown`, `Failed`, `OffLine`.
+   - `MESSAGE`: cmon's latest message for the node.
+4. Press `d` on any cluster or node for the full details.
+
+## Task 2: Review and acknowledge alarms
+
+1. Type `:alarms` and `enter`. The header's **Alarms** count shows the total.
+2. Read `SEVERITY`, `HOST`, `TITLE` and `MESSAGE`. Press `d` for full details.
+3. **(write)** To acknowledge (ignore) an alarm: select it and press `a`, then
+   choose **OK**. The alarm leaves the list on the next refresh.
+
+Shortcut: on a cluster or node row, `a` opens the alarms for just that cluster
+or node.
+
+## Task 3: Follow or abort a job
+
+1. Type `:jobs` and `enter`. Newest jobs are at the top, with `STATUS` and `%`
+   progress.
+2. Press `enter` on a job to open its **live log**. It keeps updating while the
+   job runs and scrolls to the newest line. Press `esc` to go back.
+3. **(write)** To abort a running job: select it and press `ctrl-k`, then
+   **OK**. Jobs that already finished cannot be aborted.
+
+Shortcut: on a cluster row, `j` opens the jobs of that cluster.
+
+## Task 4: Create a backup
+
+**(write)**
+
+1. Open `:clusters`, select the cluster, and press `b`.
+   (Or in `:backups`, select any backup of that cluster and press `c`.)
+2. A **create backup** form opens:
+   - **Method:** filled in for the cluster type
+     (`xtrabackupfull` for MySQL/Percona, `mariabackupfull` for MariaDB,
+     `pg_basebackup` for PostgreSQL, `mongodump` for MongoDB, `mssqlfull` for
+     SQL Server). Change it if you need a different method.
+   - **Backup host:** `auto` lets ClusterControl choose, or pick a node.
+   - **Directory:** where the backup is stored on the host
+     (default `/root/backups`).
+3. Use `tab` to move between fields and choose **Create**.
+4. The status shows `job <id> created` and the backup job's live log opens.
+5. When it finishes, the backup appears in `:backups` with status `Completed`.
+
+## Task 5: Restore a backup
+
+**(write)** Restore overwrites the data on the cluster. Be sure you have the
+right backup.
+
+1. Type `:backups` and `enter`. Optionally press a number to show one cluster.
+2. Select a backup whose `STATUS` is `Completed`. Check `AGE`, `METHOD` and
+   `SIZE`, and press `d` for details.
+3. Press `r`.
+4. The confirm box asks you to **type the cluster name**. Type it exactly and
+   choose **OK**.
+5. The restore job's live log opens. Follow it until it finishes.
+
+## Task 6: Start, stop or restart a node
+
+**(write)**
+
+1. Open the nodes: `enter` on a cluster, or `:nodes`.
+2. Select the node.
+3. Press:
+   - `s` to **start** it, then **OK**.
+   - `S` (shift-s) to **stop** it. Type the node's name exactly as shown in the `HOST` column, then **OK**.
+   - `ctrl-r` to **restart** it, then **OK**.
+4. The job's live log opens. Back in `:nodes`, the `STATUS` column updates
+   within a few seconds.
+
+## Task 7: Put a cluster or node in maintenance
+
+**(write)** Maintenance holds alarms and automatic recovery for a time, so
+planned work does not raise alerts or trigger failover.
+
+To start maintenance:
+
+1. Select a cluster in `:clusters` or a node in `:nodes`.
+2. Press `m`. A **maintenance** form opens:
+   - **Duration (minutes):** default `60`.
+   - **Reason:** default `maintenance from c9s`; write what you are doing.
+3. Choose **Start**. The `MAINT` column shows `yes`.
+
+To end maintenance early:
+
+- Select the same cluster or node and press `m` again, then **OK**; or
+- Open `:maintenance`, select the period and press `ctrl-d`, then **OK**.
+
+`:maintenance` lists all periods with `TARGET`, `ACTIVE`, `FROM`, `UNTIL`,
+`USER` and `REASON`.
+
+## Task 8: Promote a replica (failover)
+
+**(write)** The selected replica becomes the primary; the current primary is
+demoted.
+
+1. Open the nodes of the cluster (`enter` on the cluster).
+2. Select a **replica** node (not the current primary; c9s refuses that).
+3. Press `p`.
+4. Type the node's name exactly as shown in the `HOST` column, and choose **OK**.
+5. Follow the job's live log. Back in `:nodes`, the `ROLE` column shows the
+   new primary.
+
+## Task 9: Rolling restart of a cluster
+
+**(write)** ClusterControl restarts the nodes one at a time, so the cluster
+stays available.
+
+1. In `:clusters`, select the cluster.
+2. Press `ctrl-r`.
+3. Type the cluster name to confirm, and choose **OK**.
+4. Follow the job's live log until every node is back.
+
+## Task 10: Find and kill a heavy query
+
+1. Type `:top` and `enter` (or `t` on a cluster or node). Running queries are
+   listed with the longest-running active ones first. `TIME` is seconds
+   running, `QUERY` is the statement.
+2. Type `:queries` to see the top query digests over time: `COUNT`, average
+   and maximum wait, and the statement pattern. This finds the statements that
+   cost the most overall.
+3. **(write)** To kill a running query: in `:top`, select it and press
+   `ctrl-k`. The confirm box shows the PID, node and query. Choose **OK**.
+
+## Task 11: Read database log files
+
+1. Type `:logs` and `enter` for all log files cmon has collected from the
+   nodes (for example `mysqld.log`, `postgresql-*.log`), with `HOST`, `FILE`,
+   `SIZE` and when it was collected.
+   Shortcut: `enter` on a node, or `l` on a cluster, opens just its logs.
+2. Press `enter` on a file to read it. c9s shows the last 2000 lines, colours
+   errors red and warnings yellow, and keeps following the file while it is
+   open. The path bar shows the file name.
+3. Use `↑`/`↓`/`PgUp`/`PgDn` to scroll and `esc` to go back.
+4. `:events` shows the cmon cluster log (controller events).
+
+If a cluster has no files in `:logs`, cmon has not collected log files for it
+(log collection is off, or not supported for that database type).
+
+---
+
+# Reference
+
+## How c9s works
 
 ```
  you ──ssh──▶ ┌──────────── ClusterControl controller ────────────┐
@@ -61,107 +467,20 @@ laptop or connect to a controller over the network.
 ```
 
 - c9s is a single static Go binary. It has no agent, no database and no
-  server side of its own.
+  server side of its own, and it writes no files.
 - It talks only to the **local cmon** through the ClusterControl RPC v2 API.
-  It refuses to start if the configured
-  controller address is not this machine. It never logs in to database nodes
-  itself.
+  It refuses to start if the configured cmon address is not this machine. It
+  never logs in to database nodes itself.
 - It logs in as a normal **ClusterControl user** and sees exactly what that
   user is allowed to see (its teams and cluster permissions).
-- Each view is a table filled by one or more RPC calls (for example
-  `getAllClusterInfo`, `getJobInstances`, `getAlarms`, `getBackups`). The
-  table refreshes every 5 seconds by default.
+- Each view is a table filled by RPC calls (for example `getAllClusterInfo`,
+  `getJobInstances`, `getAlarms`, `getBackups`) and refreshed every 5 seconds.
 - Every change (restart, backup, promote...) is sent to cmon as a regular
-  **job**. The job is recorded in ClusterControl's job list and audit log, and
-  c9s opens its live log so you can watch it run.
-
-## Requirements
-
-| What | Detail |
-|---|---|
-| Where | The ClusterControl controller host (where `cmon` runs) |
-| ClusterControl | 2.x with the RPC v2 API on port 9501 (the default) |
-| OS | Linux, amd64 or arm64 |
-| Account | A ClusterControl user. With the user's RSA key on the controller (`~/.s9s/<user>.key`) there is no password prompt; otherwise any ClusterControl user and its password. |
-| Terminal | At least 120 × 30, UTF-8 recommended. Works over SSH and in tmux/screen. |
-
-To build from source you also need Go (the version in `go.mod`) and `make`.
-
-## Install
-
-Install c9s on the controller.
-
-### From a release
-
-Every `v*` tag builds release assets with GoReleaser:
-
-| Asset | Use |
-|---|---|
-| `c9s_<ver>_linux_amd64.deb` / `.rpm` | Debian/Ubuntu or RHEL/Rocky packages; installs `/usr/bin/c9s` |
-| `c9s_linux_<arch>.tar.gz` | Plain binary for any Linux |
-
-```bash
-# Debian / Ubuntu
-sudo apt install ./c9s_*_linux_amd64.deb
-
-# RHEL / Rocky / Alma
-sudo dnf install ./c9s_*_linux_amd64.rpm
-
-# Any Linux
-tar xzf c9s_linux_amd64.tar.gz && sudo install c9s /usr/local/bin/
-```
-
-### From source
-
-Build on the controller:
-
-```bash
-git clone https://github.com/JByns/c9s.git
-cd c9s
-make build && sudo make install     # /usr/local/bin/c9s
-```
-
-Or build on another machine and copy the binary over:
-
-```bash
-make linux            # bin/c9s-linux-amd64 and bin/c9s-linux-arm64
-scp bin/c9s-linux-amd64 root@controller:/usr/local/bin/c9s
-```
-
-## Quick start
-
-SSH to the controller and run it:
-
-```bash
-ssh root@controller
-c9s
-```
-
-That is all. c9s connects to the local cmon, takes the user from the
-controller's client config, logs in with that user's key and opens the
-**clusters** view in read-only mode. If no client config or key is set up for
-your Linux user, c9s asks for a ClusterControl user name and password instead.
-
-A typical first session:
-
-1. The **clusters** view lists every cluster with its state, node count,
-   alarms and maintenance flag. Red rows need attention.
-2. Press `1`–`9` to focus on one cluster (the numbers are shown in the
-   header), or `0` for all clusters.
-3. Press `enter` on a cluster to see its **nodes**. Press `enter` on a node to
-   see that node's **log files**, and `enter` again to read one.
-4. Press `:` and type a view name (`jobs`, `alarms`, `backups`, `top`...) to
-   jump anywhere. Press `esc` to go back.
-5. Watch the bottom bar: it always shows where you are, for example
-   `ct-jessie-cc1:/MSSQL_AO_Async/ct-jessie-node4/logs`.
-6. Press `?` for help and `ctrl-c` to quit.
-
-When you need to change something (restart a node, take a backup), quit and
-start again with `c9s --write`.
+  **job**, recorded in ClusterControl's job list and audit log.
 
 ## How c9s logs in
 
-c9s always connects to the cmon on the machine it runs on. It works out the
+c9s always connects to the cmon on the machine it runs on and works out the
 rest like this:
 
 | Setting | Taken from (first that is set) |
@@ -173,7 +492,13 @@ rest like this:
 
 The client config is the ClusterControl client configuration on the
 controller: `~/.s9s/s9s.conf` of the Linux user running c9s, then
-`/etc/s9s.conf`. c9s only reads it.
+`/etc/s9s.conf`. c9s only reads it. Example:
+
+```ini
+[global]
+cmon_user=admin
+controller=https://localhost:9501
+```
 
 | Method | How it works |
 |---|---|
@@ -181,55 +506,11 @@ controller: `~/.s9s/s9s.conf` of the Linux user running c9s, then
 | Password | c9s sends the user name and password once to log in. |
 
 The session lives in memory only and ends when you quit. If cmon expires it,
-c9s logs in again on its own. c9s writes no files.
+c9s logs in again on its own.
 
-Examples:
-
-```bash
-c9s                       # user and key from the client config: no prompt
-c9s --user admin          # another user; key ~/.s9s/admin.key or a password prompt
-CC_PASSWORD=... c9s --user admin   # password without the prompt
-```
-
-Key login needs the user's RSA key pair registered in ClusterControl, with
-the private key at `~/.s9s/<user>.key` on the controller. See the
-ClusterControl user management documentation.
-
-## The screen
-
-```
-┌─ header ────────────────────────────────────────────────────────────────────────────┐
-│ info (controller, cmon,      cluster scopes      keys for this view    c9s logo     │
-│ user, clusters, alarms)      <0> all <1> ...     <s> Start ...                      │
-├─ main table ────────────────────────────────────────────────────────────────────────┤
-│ view(scope)[rows]                                                                    │
-│ rows, coloured by status: green ok, orange warning/busy, red failed/critical        │
-├─ footer ────────────────────────────────────────────────────────────────────────────┤
-│ path bar: controller:/Cluster/node/view/file         filter  ⟳ refresh (age)  RO/RW  │
-└─────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Header, left:** the controller's host name (with `[RO]` or `[RW]`), the
-  cmon URL, the user, how many clusters there are and how many have
-  failed, and the open alarm count (red when above zero).
-- **Header, middle:** the cluster scopes. `<0>` is all clusters and `<1>`–`<9>`
-  are the first nine clusters by ID. Pressing the number limits every view to
-  that cluster.
-- **Header, right:** the keys that work in the current view. Write actions are
-  listed even in read-only mode, so you can see what exists.
-- **Table title:** the view name, the scope in brackets and the row count, for
-  example `nodes(MSSQL_AO_Async)[2]`.
-- **Path bar (bottom left):** where you are, as
-  `controller:/Cluster_Name/node/view/file`, where `controller` is the host
-  name of the controller. Spaces in cluster names show as `_`.
-  Examples:
-  - `ct-jessie-cc1:/clusters`
-  - `ct-jessie-cc1:/MSSQL_AO_Async/nodes`
-  - `ct-jessie-cc1:/MSSQL_AO_Async/ct-jessie-node4/logs`
-  - `ct-jessie-cc1:/MySQL_Replication/logs/mysqld.log`
-- **Status (bottom right):** the active filter, the refresh interval and how
-  long ago the data was loaded, and `RO`/`RW`. Messages such as
-  "job 1234 created" appear here for a few seconds.
+Key login needs the user's RSA key pair registered in ClusterControl, with the
+private key at `~/.s9s/<user>.key` on the controller. See the ClusterControl
+user management documentation.
 
 ## Views
 
@@ -239,122 +520,18 @@ example `:jobs 35`.
 | View | Aliases | Shows | Columns |
 |---|---|---|---|
 | `clusters` | `cl` | All clusters | ID, NAME, TYPE, VENDOR, STATE, NODES, ALARMS (critical/warning), MAINT, RECOVERY, STATUS |
-| `nodes` | `no` | Database nodes of the scoped cluster(s); the controller and Prometheus hosts are left out | CID, CLUSTER, HOST, IP, PORT, TYPE, ROLE, STATUS, VERSION, MAINT, MESSAGE |
+| `nodes` | `no` | Database nodes (controller and monitoring hosts left out) | CID, CLUSTER, HOST, IP, PORT, TYPE, ROLE, STATUS, VERSION, MAINT, MESSAGE |
 | `jobs` | `jo` | Recent cmon jobs | ID, CID, STATUS, %, TITLE, USER, AGE, MESSAGE |
 | `alarms` | `al` | Open alarms | ID, CID, SEVERITY, COMPONENT, HOST, TITLE, AGE, MESSAGE |
 | `backups` | `bk` | Backup records | ID, CID, STATUS, METHOD, HOST, STORAGE, SIZE, ENC, AGE, TITLE |
-| `logs` | `lo` | Database log files that cmon has collected from the nodes (for example `mysqld.log`, `postgresql-*.log`) | CID, HOST, PORT, FILE, SIZE, COLLECTED |
+| `logs` | `lo` | Database log files collected from the nodes | CID, HOST, PORT, FILE, SIZE, COLLECTED |
 | `events` | `ev`, `clusterlog` | The cmon cluster log | AGE, CID, SEVERITY, COMPONENT, MESSAGE |
-| `top` | `processes`, `pr`, `ps` | Running database processes; active queries first, longest running first | CID, NODE, PID, USER, DB, COMMAND, TIME, STATE, QUERY |
+| `top` | `processes`, `pr`, `ps` | Running database processes, active and longest first | CID, NODE, PID, USER, DB, COMMAND, TIME, STATE, QUERY |
 | `queries` | `qu` | Top query digests | CID, NODE, DB, COUNT, wait times, QUERY |
-| `maintenance` | `maint`, `ma` | Scheduled and active maintenance periods | CID, TARGET (host or cluster), ACTIVE, FROM, UNTIL, USER, REASON |
+| `maintenance` | `maint`, `ma` | Maintenance periods | CID, TARGET, ACTIVE, FROM, UNTIL, USER, REASON |
 
-When a node is in scope (after `enter` on a node), the `logs`, `top` and
-`alarms` views show only that node.
-
-Press `d` on any row to see the full record from cmon as JSON. This is the
-quickest way to see a field that has no column.
-
-## The top 10 operational tasks
-
-These are the tasks c9s is built around. Steps 2–10 that change something need
-write mode (see [below](#read-only-and-write-mode)).
-
-### 1. Check cluster and node health
-
-`:clusters` (the start view) shows every cluster's state and how many of its
-nodes are up. Press `enter` on a cluster for its nodes, with each node's role
-(primary, replica...) and status. Red means failed or offline.
-
-### 2. Review and acknowledge alarms
-
-`:alarms` lists open alarms, critical first. The header shows the total. Press
-`a` on an alarm to acknowledge (ignore) it.
-
-### 3. Follow and abort jobs
-
-`:jobs` lists recent jobs with their progress. Press `enter` to open a job's
-live log; it keeps updating until the job ends. Press `ctrl-k` to abort a
-running job.
-
-### 4. Create and restore backups
-
-- **Create:** on a cluster press `b`, or in `:backups` press `c`. A form asks
-  for the backup method (filled in for the cluster type, for example
-  `xtrabackupfull`, `mariabackupfull`, `pg_basebackup`, `mongodump`,
-  `mssqlfull`), the host (`auto` lets cmon choose) and the directory. c9s then
-  opens the backup job's log.
-- **Restore:** in `:backups`, select a `Completed` backup and press `r`. You
-  must type the cluster name to confirm, because restore overwrites data.
-
-### 5. Start, stop and restart nodes
-
-In `:nodes`: `s` starts, `S` stops (type the node name to confirm) and `ctrl-r`
-restarts the selected node.
-
-### 6. Maintenance mode
-
-On a cluster or a node press `m`. If no maintenance is active, a form asks for
-the duration and the reason; alarms and auto-recovery are then held for that
-time. If maintenance is active, `m` ends it. `:maintenance` lists all periods,
-and `ctrl-d` ends the selected one.
-
-### 7. Failover: promote a replica
-
-In `:nodes`, select a replica and press `p`. Type the node name to confirm.
-c9s refuses if the node is already the primary.
-
-### 8. Rolling restart
-
-On a cluster press `ctrl-r` and type the cluster name. cmon restarts the nodes
-one at a time, keeping the cluster available.
-
-### 9. Top processes and queries
-
-`:top` shows what the databases are running now, with active queries at the
-top. Press `ctrl-k` to kill the selected query. `:queries` shows the top query
-digests (count and wait times) to find the heavy statements.
-
-### 10. Logs
-
-`:logs` lists the database log files cmon has collected. Press `enter` to read
-a file: c9s shows the last 2000 lines, colours errors and warnings, and keeps
-following the file while it is open. `:events` shows the cmon cluster log.
-
-### Summary
-
-| # | Task | View | Keys |
-|---|---|---|---|
-| 1 | Cluster & node health | `:clusters` `:nodes` | `enter` drill down |
-| 2 | Alarms | `:alarms` | `a` acknowledge |
-| 3 | Jobs | `:jobs` | `enter` live log, `ctrl-k` abort |
-| 4 | Backups | `:backups`, `:clusters` | `c` / `b` create, `r` restore |
-| 5 | Node start/stop/restart | `:nodes` | `s` / `S` / `ctrl-r` |
-| 6 | Maintenance | `:clusters` `:nodes` `:maintenance` | `m` on/off, `ctrl-d` end |
-| 7 | Failover | `:nodes` | `p` promote |
-| 8 | Rolling restart | `:clusters` | `ctrl-r` |
-| 9 | Top processes / queries | `:top` `:queries` | `ctrl-k` kill query |
-| 10 | Logs | `:logs` `:events` | `enter` view file |
-
-## Read-only and write mode
-
-c9s starts **read-only**. Looking is always safe; changing needs a deliberate
-step.
-
-| Start with | Mode |
-|---|---|
-| `c9s` | Read-only (`RO`). Write keys show a message instead of acting. |
-| `c9s --write` | Read-write (`RW`) |
-
-In write mode every change still asks first:
-
-- Simple actions (start, restart, acknowledge, abort, kill query, maintenance)
-  ask yes/no.
-- Risky actions (**stop**, **promote**, **rolling restart**, **restore**) make
-  you type the node or cluster name.
-
-The ClusterControl user's own permissions always apply on top: if the user may
-not restart a node, cmon refuses the request.
+After `enter` on a node, the `logs`, `top` and `alarms` views show only that
+node.
 
 ## Keyboard reference
 
@@ -362,29 +539,32 @@ not restart a node, cmon refuses the request.
 
 | Key | Action |
 |---|---|
+| `↑` `↓` `PgUp` `PgDn` `Home` `End` | Move in tables and text |
+| `enter` | Drill down, or the view's main action |
+| `esc` | Clear the filter; press again to go back; closes boxes and pages |
 | `:` | Command prompt (see below) |
 | `/` | Filter the rows of the current view by text |
 | `0`–`9` | Scope: all clusters, or cluster N from the header |
-| `enter` | Drill down, or the view's main action |
-| `d` | Describe the selected row (raw JSON) |
+| `d` | Details of the selected row |
 | `R` | Refresh now |
-| `esc` | Clear the filter; press again to go back |
 | `?` | Help |
 | `ctrl-c` | Quit |
-| arrows, `j`/`k`, `PgUp`/`PgDn`, `g`/`G` | Move in tables and text |
+
+In confirm boxes and forms: `tab` moves between fields and buttons, `enter`
+presses the button, `esc` cancels.
 
 ### Commands (`:`)
 
 | Command | Action |
 |---|---|
 | `:<view>` | Open a view: `cl`, `no`, `jo`, `al`, `bk`, `lo`, `ev`, `top`, `qu`, `maint` |
-| `:<view> <cluster-id>` | Open a view scoped to one cluster, for example `:nodes 35` |
+| `:<view> <cluster-id>` | Open a view for one cluster, for example `:nodes 35` |
 | `:help` | Help |
 | `:q` | Quit |
 
 ### Per view
 
-| View | Key | Action | Write |
+| View | Key | Action | Needs `--write` |
 |---|---|---|---|
 | clusters | `enter` | Nodes of the cluster | |
 | | `l` / `j` / `a` / `t` | Logs / Jobs / Alarms / Top for the cluster | |
@@ -417,34 +597,79 @@ c9s version                 print the version
 |---|---|---|
 | `--user` | `cmon_user` from the client config | ClusterControl user |
 | `--key` | `~/.s9s/<user>.key` | RSA key for key login |
-| `--refresh` | `5s` | How often views refresh |
+| `--refresh` | `5s` | How often views refresh, e.g. `--refresh 10s` |
 | `--write` | off | Allow changes |
 
 | Environment variable | Meaning |
 |---|---|
-| `CC_PASSWORD` | Password for password login |
-| `C9S_ASCII` | Set to keep your locale as it is (see Troubleshooting) |
+| `CC_PASSWORD` | Password for password login (skips the prompt) |
+| `C9S_ASCII` | Set to `1` to keep your terminal locale as it is (see Troubleshooting) |
 | `C9S_CONTROLLER` | Development only: another cmon URL on this machine, such as the mock |
 
-`c9s rpc` is handy for checking what cmon returns:
+`c9s rpc` prints what cmon returns, which helps when reporting a problem:
 
 ```bash
 c9s rpc /v2/clusters/ getAllClusterInfo '{"with_hosts":true}'
 c9s rpc /v2/alarm/ getAlarms '{"cluster_id":35}'
 ```
 
+## Upgrade and uninstall
+
+**Upgrade:** download the new release file ([step 2](#2-download-c9s)) and
+install it the same way ([step 3](#3-install-c9s-on-the-controller)). The
+package manager replaces the old version. For the plain binary, run the same
+`install` command again. Check with `c9s version`.
+
+**Uninstall:**
+
+```bash
+sudo apt remove c9s        # Debian / Ubuntu
+sudo dnf remove c9s        # RHEL / Rocky / Alma / Oracle
+sudo rm /usr/local/bin/c9s # plain binary
+```
+
+c9s keeps no files of its own, so nothing else needs cleaning up.
+
 ## Troubleshooting
 
-| Symptom | Cause and fix |
+| Message or symptom | Cause and fix |
 |---|---|
+| `c9s: command not found` | Not installed, or `/usr/local/bin` is not in your `PATH` (plain binary). Repeat [step 3](#3-install-c9s-on-the-controller). |
 | `controller ... is not this machine` | The client config points at another host. c9s only runs on the controller: SSH to it and run c9s there. |
-| `cannot reach cmon` | You are not on the controller, or cmon is stopped. Check `systemctl status cmon`. |
-| `login as ... failed` | Wrong user, key or password. Check the key in `~/.s9s/<user>.key` is registered for that user in ClusterControl, or try `c9s --user <name>` with the password. |
+| `cannot reach cmon at ...` | You are not on the controller, or cmon is stopped. Check `systemctl status cmon`; start it with `systemctl start cmon`. |
+| `login as ... failed` | Wrong user, key or password. Try `c9s --user <name>` and type the password. If key login fails, check that `~/.s9s/<user>.key` is the key registered for that user in ClusterControl. |
 | Boxes and lines draw as `?` | The terminal locale is not UTF-8 (common over SSH). c9s switches to `C.UTF-8` on its own; if your terminal really cannot show UTF-8, set `C9S_ASCII=1`. |
-| Layout is cut off | Make the terminal at least 120 × 30. |
-| A write key says "read-only" | Quit and start again with `c9s --write`. |
+| Columns are cut off | Make the terminal window at least 120 × 30. |
+| `read-only: quit and start c9s --write ...` | You pressed a key that changes something. Quit and start `c9s --write`. |
+| `not confirmed` | The name you typed in the confirm box did not match. Nothing was changed. |
+| `only completed backups can be restored` | Pick a backup whose status is `Completed`. |
 | `:logs` is empty for a cluster | cmon has not collected log files for it (log collection is off, or not supported for that database type). |
-| A view is empty but you expect data | Press `d` on a nearby row, or run `c9s rpc ...` to see what cmon returns, and open an issue with the output. |
+| A view is empty but you expect data | Press `R` to refresh. If still empty, run the matching `c9s rpc ...` call and include its output when reporting the problem. |
+| The screen looks broken after resizing | Press `R`, or quit and start again. |
+
+## FAQ
+
+**Can I run c9s from my laptop?**
+No. c9s runs on the ClusterControl controller. SSH to the controller and run
+it there.
+
+**Is it safe to run on production?**
+Yes, in the default read-only mode it only reads. Changes need `--write`,
+always ask for confirmation, and run as normal ClusterControl jobs.
+
+**Does it need its own user or password?**
+No. It uses your ClusterControl user and its permissions.
+
+**Can several people use it at the same time?**
+Yes. Each person runs their own c9s session on the controller; each logs in
+separately.
+
+**Does it store anything?**
+No. It writes no files, and the login session ends when you quit.
+
+**Why do some keys show in read-only mode?**
+So you can see what actions exist. Pressing them in read-only mode only shows
+a message.
 
 ## Development
 
@@ -460,33 +685,40 @@ c9s rpc /v2/alarm/ getAlarms '{"cluster_id":35}'
 └── cmd/mockcmon             fake controller for local testing
 ```
 
-You can develop on any machine (Linux or macOS) with the mock controller,
-which listens on `127.0.0.1:9501`, so c9s accepts it as local:
+**Build from source** (needs Go, the version in `go.mod`, and `make`):
+
+```bash
+git clone https://github.com/JByns/c9s.git
+cd c9s
+make build           # ./bin/c9s for this machine
+make linux           # bin/c9s-linux-amd64 and bin/c9s-linux-arm64
+make test            # go vet + unit tests
+```
+
+To try a build on a controller, copy it there:
+
+```bash
+scp bin/c9s-linux-amd64 root@<controller>:/usr/local/bin/c9s
+```
+
+**Try every action safely with the mock controller.** It is a fake cmon on
+`127.0.0.1:9501` with four clusters (Galera, Replication, ClickHouse, SQL
+Server) that keeps state for jobs, maintenance and alarms. It works on Linux
+or macOS:
 
 ```bash
 make mock            # terminal 1: fake cmon on http://127.0.0.1:9501
 make dev             # terminal 2: c9s against the mock, in write mode
 ```
 
-The mock has four clusters (Galera, Replication, ClickHouse, MSSQL) and keeps
-state for jobs, maintenance and alarms, so every action can be tried safely.
-
-```bash
-make test            # go vet + unit tests
-```
-
-### Adding a view
-
-Add a `Resource` in `internal/ui/resources.go` with its name, aliases,
-columns and a `Fetch` function that makes the RPC call. Add keys for it in
-`actionsFor` in `internal/ui/actions.go`. Use `c9s rpc` against a real
+**Adding a view:** add a `Resource` in `internal/ui/resources.go` with its
+name, aliases, columns and a `Fetch` function that makes the RPC call. Add keys
+for it in `actionsFor` in `internal/ui/actions.go`. Use `c9s rpc` on a real
 controller first to learn the field names.
 
-### Releasing
-
-Push a tag such as `v0.2.0`. GitHub Actions runs the tests, then GoReleaser
-builds the archives and the `.deb`/`.rpm` packages and attaches them to the
-GitHub release.
+**Releasing:** push a tag such as `v0.2.0`. GitHub Actions runs the tests,
+then GoReleaser builds the `.tar.gz`, `.deb` and `.rpm` files and attaches
+them to the GitHub release.
 
 ## Limitations and roadmap
 
@@ -495,5 +727,4 @@ GitHub release.
 - Views poll every few seconds; cmon's event stream (push updates) is not used
   yet.
 - Not yet covered: deploying or importing clusters, adding or removing nodes,
-  user and team management, configuration editing, ProxySQL/HAProxy views.
-
+  user and team management, configuration editing, load balancer views.
