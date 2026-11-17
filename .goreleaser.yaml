@@ -1,0 +1,28 @@
+version: 2
+project_name: c9s
+
+builds:
+  - main: .
+    binary: c9s
+    env: [CGO_ENABLED=0]
+    goos: [linux]
+    goarch: [amd64, arm64]
+    ldflags: ["-s -w -X main.version={{ .Version }}"]
+
+archives:
+  - formats: [tar.gz]
+    files: [README.md]
+
+nfpms:
+  - package_name: c9s
+    vendor: Severalnines
+    homepage: https://github.com/JByns/c9s
+    description: Terminal UI client for ClusterControl, run on the controller
+    formats: [deb, rpm]
+    bindir: /usr/bin
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
