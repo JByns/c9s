@@ -184,8 +184,10 @@ func (a *App) createJob(clusterID int, title, command string, data rpc.Map) {
 		r, err := c.Call("/v2/jobs/", "createJobInstance", rpc.Map{
 			"cluster_id": clusterID,
 			"job": rpc.Map{
-				"title":    title,
-				"job_spec": rpc.Map{"command": command, "job_data": data},
+				// cmon rejects a job without its class name.
+				"class_name": "CmonJobInstance",
+				"title":      title,
+				"job_spec":   rpc.Map{"command": command, "job_data": data},
 			},
 		})
 		a.tv.QueueUpdateDraw(func() {

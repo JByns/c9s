@@ -225,9 +225,22 @@ func handle(w http.ResponseWriter, r *http.Request) {
 			"initiate": req["initiate"], "deadline": req["deadline"], "reason": req["reason"], "username": "admin", "is_active": true})
 		mu.Unlock()
 	case "createJobInstance":
+		// Validate like cmon does.
+		job, _ := req["job"].(M)
+		spec, _ := job["job_spec"].(M)
+		switch {
+		case job == nil:
+			reply = M{"request_status": "InvalidRequest", "error_string": "Missing 'job' field."}
+		case job["class_name"] != "CmonJobInstance":
+			reply = M{"request_status": "InvalidRequest", "error_string": "Error in 'job' field: The 'class_name' field is not 'CmonJobInstance'."}
+		case spec == nil || spec["command"] == nil:
+			reply = M{"request_status": "InvalidRequest", "error_string": "Error in 'job' field: missing job_spec.command."}
+		}
+		if reply["request_status"] == "InvalidRequest" {
+			break
+		}
 		mu.Lock()
 		nextID++
-		job, _ := req["job"].(M)
 		e := M{"job_id": nextID, "cluster_id": req["cluster_id"], "status": "DEFINED", "title": job["title"], "user_name": "admin", "created": ts(0)}
 		extra = append(extra, e)
 		mu.Unlock()
