@@ -113,6 +113,7 @@ func (a *App) closeModal(name string) {
 // left/right between buttons, up/down between fields and buttons. Text
 // editing in input fields and an open dropdown list keep their arrows.
 func arrowNav(form *tview.Form) *tview.Form {
+	styleForm(form)
 	tab := func(back bool) *tcell.EventKey {
 		if back {
 			return tcell.NewEventKey(tcell.KeyBacktab, 0, tcell.ModNone)
@@ -145,7 +146,7 @@ func arrowNav(form *tview.Form) *tview.Form {
 // that are hard to undo, like stop, promote, restore).
 func (a *App) confirm(question, word string, onYes func()) {
 	form := arrowNav(tview.NewForm())
-	form.SetBorder(true).SetTitle(" [red::b]confirm ").SetBorderColor(tcell.ColorRed)
+	form.SetBorder(true).SetTitle(" [#ff5a5a::b]confirm ").SetBorderColor(colBad)
 	text := tview.NewTextView().SetDynamicColors(true).SetText(question)
 	var typed *tview.InputField
 	if word != "" {
@@ -155,7 +156,7 @@ func (a *App) confirm(question, word string, onYes func()) {
 	form.AddButton("Cancel", func() { a.closeModal("confirm") })
 	form.AddButton("OK", func() {
 		if typed != nil && strings.TrimSpace(typed.GetText()) != word {
-			a.flash("[yellow]not confirmed")
+			a.flash("[#ffb020]not confirmed")
 			return
 		}
 		a.closeModal("confirm")
@@ -164,7 +165,7 @@ func (a *App) confirm(question, word string, onYes func()) {
 	form.SetCancelFunc(func() { a.closeModal("confirm") })
 	box := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(text, 3, 0, false).AddItem(form, 0, 1, true)
-	box.SetBorder(true).SetBorderColor(tcell.ColorRed).SetTitle(" [red::b]confirm ")
+	box.SetBorder(true).SetBorderColor(colBad).SetTitle(" [#ff5a5a::b]confirm ")
 	form.SetBorder(false)
 	h := 9
 	if word != "" {
@@ -192,11 +193,11 @@ func (a *App) createJob(clusterID int, title, command string, data rpc.Map) {
 		})
 		a.tv.QueueUpdateDraw(func() {
 			if err != nil {
-				a.flash("[red]" + tview.Escape(err.Error()))
+				a.flash("[#ff5a5a]" + tview.Escape(err.Error()))
 				return
 			}
 			job, _ := r["job"].(map[string]any)
-			a.flash(fmt.Sprintf("[green]job %s created: %s", rpc.Str(job, "job_id"), title))
+			a.flash(fmt.Sprintf("[#3ddc97]job %s created: %s", rpc.Str(job, "job_id"), title))
 			if job != nil {
 				a.jobLog(job)
 			}
@@ -211,22 +212,22 @@ func (a *App) jobLog(job rpc.Map) {
 	a.showDetail(fmt.Sprintf("job-%d", id), fmt.Sprintf(" job %d: %s ", id, tview.Escape(rpc.Str(job, "title"))), func() (string, bool) {
 		r, err := c.Call("/v2/jobs/", "getJobLog", rpc.Map{"job_id": id, "ascending": true, "limit": 2000})
 		if err != nil {
-			return "[red]" + tview.Escape(err.Error()), false
+			return "[#ff5a5a]" + tview.Escape(err.Error()), false
 		}
 		var b strings.Builder
 		for _, m := range rpc.List(r, "messages") {
-			color := "white"
+			color := tagInk
 			switch rpc.Str(m, "message_status") {
 			case "JOB_FAILED", "JOB_ERROR":
-				color = "red"
+				color = tagBad
 			case "JOB_WARNING":
-				color = "yellow"
+				color = tagWarn
 			}
-			fmt.Fprintf(&b, "[gray]%s [%s]%s\n", rpc.Str(m, "created"), color, tview.Escape(rpc.Str(m, "message_text")))
+			fmt.Fprintf(&b, "[#7d84b2]%s [%s]%s\n", rpc.Str(m, "created"), color, tview.Escape(rpc.Str(m, "message_text")))
 		}
 		st, _ := c.Call("/v2/jobs/", "getJobInstance", rpc.Map{"job_id": id})
 		status := rpc.Str(st, "job.status")
-		fmt.Fprintf(&b, "\n[aqua::b]-- %s %s%% --", status, rpc.Str(st, "job.progress_percent"))
+		fmt.Fprintf(&b, "\n[#ff3fa5::b]-- %s %s%% --", status, rpc.Str(st, "job.progress_percent"))
 		return b.String(), status == "RUNNING" || status == "DEFINED" || status == "DEQUEUED"
 	})
 }
@@ -234,7 +235,7 @@ func (a *App) jobLog(job rpc.Map) {
 func (a *App) abortJob(job rpc.Map) {
 	id := int(num(job["job_id"]))
 	if st := rpc.Str(job, "status"); st != "RUNNING" && st != "DEFINED" {
-		a.flash("[yellow]job " + strconv.Itoa(id) + " is " + st + ", nothing to abort")
+		a.flash("[#ffb020]job " + strconv.Itoa(id) + " is " + st + ", nothing to abort")
 		return
 	}
 	a.confirm(fmt.Sprintf("Abort job %d: %s?", id, rpc.Str(job, "title")), "", func() {
@@ -249,10 +250,10 @@ func (a *App) simpleCall(path, op string, params rpc.Map, okMsg string) {
 		_, err := c.Call(path, op, params)
 		a.tv.QueueUpdateDraw(func() {
 			if err != nil {
-				a.flash("[red]" + tview.Escape(err.Error()))
+				a.flash("[#ff5a5a]" + tview.Escape(err.Error()))
 				return
 			}
-			a.flash("[green]" + tview.Escape(okMsg))
+			a.flash("[#3ddc97]" + tview.Escape(okMsg))
 			a.refresh()
 		})
 	}()
@@ -270,7 +271,7 @@ func (a *App) nodeJob(r rpc.Map, command, title string, typed bool) {
 	if typed {
 		word = host
 	}
-	q := fmt.Sprintf("%s [white::b]%s:%s[-:-:-] in cluster %s?", title, host, rpc.Str(r, "port"), rpc.Str(r, "_cluster_name"))
+	q := fmt.Sprintf("%s [#ffffff::b]%s:%s[-:-:-] in cluster %s?", title, host, rpc.Str(r, "port"), rpc.Str(r, "_cluster_name"))
 	a.confirm(q, word, func() {
 		a.createJob(cid(r), title, command, rpc.Map{
 			"node": nodeRef(r), "hostname": host, "port": int(num(r["port"])),
@@ -281,18 +282,18 @@ func (a *App) nodeJob(r rpc.Map, command, title string, typed bool) {
 func (a *App) promote(r rpc.Map) {
 	role := strings.ToLower(rpc.Str(r, "role"))
 	if role == "master" || role == "primary" {
-		a.flash("[yellow]" + rpc.Str(r, "hostname") + " is already the primary")
+		a.flash("[#ffb020]" + rpc.Str(r, "hostname") + " is already the primary")
 		return
 	}
 	host := rpc.Str(r, "hostname")
-	a.confirm(fmt.Sprintf("Promote replica [white::b]%s[-:-:-] to primary in cluster %s?\nThe current primary is demoted.", host, rpc.Str(r, "_cluster_name")), host, func() {
+	a.confirm(fmt.Sprintf("Promote replica [#ffffff::b]%s[-:-:-] to primary in cluster %s?\nThe current primary is demoted.", host, rpc.Str(r, "_cluster_name")), host, func() {
 		a.createJob(cid(r), "Promoting Replica", "promote_replication_slave", rpc.Map{"node": nodeRef(r)})
 	})
 }
 
 func (a *App) rollingRestart(r rpc.Map) {
 	name := rpc.Str(r, "cluster_name")
-	a.confirm(fmt.Sprintf("Rolling restart of all nodes in [white::b]%s[-:-:-]?\nNodes restart one at a time.", name), name, func() {
+	a.confirm(fmt.Sprintf("Rolling restart of all nodes in [#ffffff::b]%s[-:-:-]?\nNodes restart one at a time.", name), name, func() {
 		a.createJob(cid(r), "Rolling Restart", "rolling_restart", rpc.Map{})
 	})
 }
@@ -336,7 +337,7 @@ func (a *App) toggleMaintenance(r rpc.Map) {
 		a.simpleCall("/v2/maintenance/", "addMaintenance", p, fmt.Sprintf("maintenance on for %s (%d min)", target, mins))
 	})
 	form.SetCancelFunc(func() { a.closeModal("maint") })
-	form.SetBorder(true).SetTitle(" [yellow::b]maintenance: " + tview.Escape(target) + " ")
+	form.SetBorder(true).SetTitle(" [#ffb020::b]maintenance: " + tview.Escape(target) + " ")
 	a.showModal("maint", form, 70, 9)
 }
 
@@ -346,7 +347,7 @@ func (a *App) endMaintenanceFor(clusterID int, isNode bool, r rpc.Map) {
 		rows, err := FindResource("maintenance").Fetch(c, Scope{ClusterID: clusterID})
 		a.tv.QueueUpdateDraw(func() {
 			if err != nil {
-				a.flash("[red]" + tview.Escape(err.Error()))
+				a.flash("[#ff5a5a]" + tview.Escape(err.Error()))
 				return
 			}
 			for _, p := range rows {
@@ -362,14 +363,14 @@ func (a *App) endMaintenanceFor(clusterID int, isNode bool, r rpc.Map) {
 				a.endMaintenance(p)
 				return
 			}
-			a.flash("[yellow]no active maintenance period found")
+			a.flash("[#ffb020]no active maintenance period found")
 		})
 	}()
 }
 
 func (a *App) endMaintenance(p rpc.Map) {
 	if rpc.Str(p, "is_active") != "true" {
-		a.flash("[yellow]this maintenance period is not active")
+		a.flash("[#ffb020]this maintenance period is not active")
 		return
 	}
 	target := firstOf("hostname", "cluster_name")(p)
@@ -427,7 +428,7 @@ func (a *App) createBackup(r rpc.Map) {
 	cl := a.clusterByID(cid(r))
 	a.mu.Unlock()
 	if cl == nil {
-		a.flash("[yellow]pick a cluster first")
+		a.flash("[#ffb020]pick a cluster first")
 		return
 	}
 	hosts := []string{"auto"}
@@ -459,20 +460,20 @@ func (a *App) createBackup(r rpc.Map) {
 		a.createJob(cid(cl), "Create Backup", "backup", data)
 	})
 	form.SetCancelFunc(func() { a.closeModal("backup") })
-	form.SetBorder(true).SetTitle(" [green::b]create backup: " + tview.Escape(name) + " ")
+	form.SetBorder(true).SetTitle(" [#3ddc97::b]create backup: " + tview.Escape(name) + " ")
 	a.showModal("backup", form, 72, 11)
 }
 
 func (a *App) restoreBackup(r rpc.Map) {
 	if rpc.Str(r, "status") != "Completed" {
-		a.flash("[yellow]only completed backups can be restored")
+		a.flash("[#ffb020]only completed backups can be restored")
 		return
 	}
 	id := rpc.Str(r, "id")
 	a.mu.Lock()
 	name := a.clusterName(cid(r))
 	a.mu.Unlock()
-	q := fmt.Sprintf("Restore backup %s (%s) to cluster [white::b]%s[-:-:-]?\nThis overwrites the data on the cluster.", id, rpc.Str(r, "method"), name)
+	q := fmt.Sprintf("Restore backup %s (%s) to cluster [#ffffff::b]%s[-:-:-]?\nThis overwrites the data on the cluster.", id, rpc.Str(r, "method"), name)
 	a.confirm(q, name, func() {
 		a.createJob(cid(r), "Restore Backup", "restore_backup", rpc.Map{
 			"backupid": int(num(r["id"])), "bootstrap": true,
@@ -492,7 +493,7 @@ func (a *App) viewLogFile(r rpc.Map) {
 	a.showDetail(file, fmt.Sprintf(" %s: %s ", tview.Escape(host), tview.Escape(file)), func() (string, bool) {
 		rep, err := c.Call("/v2/log/", "getCollectedLog", params)
 		if err != nil {
-			return "[red]" + tview.Escape(err.Error()), false
+			return "[#ff5a5a]" + tview.Escape(err.Error()), false
 		}
 		lines := strings.Split(strings.ReplaceAll(rpc.Str(rep, "data.content"), "\r\n", "\n"), "\n")
 		if len(lines) > 2000 {
@@ -500,13 +501,13 @@ func (a *App) viewLogFile(r rpc.Map) {
 		}
 		var b strings.Builder
 		for _, l := range lines {
-			color := "white"
+			color := tagInk
 			u := strings.ToUpper(l)
 			switch {
 			case strings.Contains(u, "ERROR"), strings.Contains(u, "FATAL"), strings.Contains(u, "PANIC"):
-				color = "red"
+				color = tagBad
 			case strings.Contains(u, "WARN"):
-				color = "yellow"
+				color = tagWarn
 			}
 			fmt.Fprintf(&b, "[%s]%s\n", color, tview.Escape(l))
 		}

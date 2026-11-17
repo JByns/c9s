@@ -228,11 +228,17 @@ If you see an error instead, go to [Troubleshooting](#troubleshooting).
 | ② | Cluster scopes | `<0> all` and `<1>`–`<9>` for the first nine clusters by ID. Press the number to show only that cluster in every view. |
 | ③ | Keys | The keys that work in the view you are looking at. Changes are listed even in read-only mode, so you can see what exists. |
 | ④ | Table title | View name, scope in brackets, row count, and the active filter, e.g. `nodes(MSSQL_AO_Async)[2]` or `jobs(all)[2] </backup>` |
-| ⑤ | Rows | **Green**: OK. **Orange/yellow**: warning or busy. **Red**: failed, offline or critical. |
+| ⑤ | Rows | **Light text**: OK. **Amber**: warning, busy or in maintenance. **Red**: failed, offline or critical. **Dim**: completed. The selected row is white on blue. |
 | ⑥ | Path bar | Where you are. `ct-jessie-cc1:/MSSQL_AO_Async/ct-jessie-node4/logs` means: controller `ct-jessie-cc1`, cluster `MSSQL_AO_Async`, node `ct-jessie-node4`, view `logs`. Spaces in cluster names show as `_`. |
 | ⑦ | Status | The refresh interval and how long ago the data was loaded, and `RO`/`RW`. Messages such as `job 1234 created` appear here for a few seconds. |
 
 The table refreshes on its own every 5 seconds.
+
+c9s uses the Severalnines colours: a dark navy background, pink for keys and
+headings, and a magenta path bar. It sets its own background, so it looks the
+same and stays readable whatever your terminal theme is. A terminal with
+true-colour support (most modern terminals; `COLORTERM=truecolor`) shows the
+exact colours; others show the nearest match.
 
 ## 6. Your first five minutes: a guided tour
 

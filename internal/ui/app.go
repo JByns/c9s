@@ -15,7 +15,7 @@ import (
 	"github.com/JByns/c9s/internal/rpc"
 )
 
-const logo = `[orange::b] ____ ___
+const logo = `[#ff3fa5::b] ____ ___
 / ___/ _ \ ___
 | |  \_, /(_-<
 | |___/_/ /__/
@@ -70,6 +70,7 @@ type view struct {
 
 // New builds the application.
 func New(client *rpc.Client, opts Options) *App {
+	applyTheme()
 	a := &App{tv: tview.NewApplication(), rpc: client, opts: opts, host: opts.Host}
 	a.build()
 	a.switchTo(FindResource("clusters"), Scope{}, "", false)
@@ -101,12 +102,12 @@ func (a *App) build() {
 		AddItem(logoView, 15, 0, false)
 
 	a.table = tview.NewTable().SetSelectable(true, false).SetFixed(1, 0)
-	a.table.SetBorder(true).SetBorderColor(tcell.ColorAqua)
-	a.table.SetSelectedStyle(tcell.StyleDefault.Background(tcell.ColorAqua).Foreground(tcell.ColorBlack))
+	a.table.SetBorder(true).SetBorderColor(colBorder)
+	a.table.SetSelectedStyle(tcell.StyleDefault.Background(colSelection).Foreground(colWhite).Bold(true))
 	a.table.SetInputCapture(a.tableKeys)
 
 	a.detail = tview.NewTextView().SetDynamicColors(true).SetScrollable(true).SetWrap(true)
-	a.detail.SetBorder(true).SetBorderColor(tcell.ColorAqua)
+	a.detail.SetBorder(true).SetBorderColor(colBorder)
 	a.detail.SetInputCapture(func(ev *tcell.EventKey) *tcell.EventKey {
 		if ev.Key() == tcell.KeyEsc || ev.Rune() == 'q' {
 			a.closeDetail()
@@ -115,8 +116,8 @@ func (a *App) build() {
 		return ev
 	})
 
-	a.prompt = tview.NewInputField().SetFieldBackgroundColor(tcell.ColorDefault)
-	a.prompt.SetBorder(true).SetBorderColor(tcell.ColorAqua)
+	a.prompt = tview.NewInputField().SetFieldBackgroundColor(colPanel).SetFieldTextColor(colInk)
+	a.prompt.SetBorder(true).SetBorderColor(colPink)
 	a.prompt.SetDoneFunc(a.promptDone)
 
 	a.pages = tview.NewPages().
@@ -210,7 +211,7 @@ func (a *App) refresh() {
 				return // view changed while loading
 			}
 			if err != nil {
-				a.flash("[red]" + tview.Escape(err.Error()))
+				a.flash("[#ff5a5a]" + tview.Escape(err.Error()))
 			} else {
 				a.rows = rows
 				a.lastLoad = time.Now()
@@ -265,7 +266,7 @@ func (a *App) renderTable() {
 	a.table.Clear()
 	for i, c := range a.res.Columns {
 		cell := tview.NewTableCell(c.Title + " ").SetSelectable(false).
-			SetTextColor(tcell.ColorWhite).SetAttributes(tcell.AttrBold).SetExpansion(1)
+			SetTextColor(colPink).SetBackgroundColor(colPanel).SetAttributes(tcell.AttrBold).SetExpansion(1)
 		if c.Right {
 			cell.SetAlign(tview.AlignRight)
 		}
@@ -296,9 +297,9 @@ func (a *App) renderTable() {
 			a.table.SetCell(r, i, cell)
 		}
 	}
-	title := fmt.Sprintf(" [aqua::b]%s([fuchsia]%s[aqua])[white][%d] ", a.res.Name, tview.Escape(a.scopeLabel()), len(a.shown))
+	title := fmt.Sprintf(" [#ffffff::b]%s([#ff3fa5]%s[#ffffff])[#9ea6d8][%d] ", a.res.Name, tview.Escape(a.scopeLabel()), len(a.shown))
 	if a.filter != "" {
-		title += fmt.Sprintf("[fuchsia::b]</%s> ", tview.Escape(a.filter))
+		title += fmt.Sprintf("[#ff3fa5::b]</%s> ", tview.Escape(a.filter))
 	}
 	a.table.SetTitle(title)
 	if sel < 1 {
@@ -338,22 +339,22 @@ func (a *App) pathText() string {
 }
 
 func (a *App) renderFooter() {
-	a.path.SetText(" [black:orange:b] " + tview.Escape(a.pathText()) + " [-:-:-]")
+	a.path.SetText(" [#ffffff:#b80b7b:b] " + tview.Escape(a.pathText()) + " [-:-:-]")
 	if time.Now().Before(a.flashUntil) {
 		return
 	}
 	var b strings.Builder
 	if a.filter != "" {
-		fmt.Fprintf(&b, "[fuchsia]/%s  ", tview.Escape(a.filter))
+		fmt.Fprintf(&b, "[#ff3fa5]/%s  ", tview.Escape(a.filter))
 	}
-	fmt.Fprintf(&b, "[gray]⟳ %s", a.opts.Refresh)
+	fmt.Fprintf(&b, "[#7d84b2]⟳ %s", a.opts.Refresh)
 	if !a.lastLoad.IsZero() {
 		fmt.Fprintf(&b, " (%s ago)", shortDur(time.Since(a.lastLoad)))
 	}
 	if a.opts.AllowWrite {
-		b.WriteString("  [red::b]RW ")
+		b.WriteString("  [#ff5a5a::b]RW ")
 	} else {
-		b.WriteString("  [green::b]RO ")
+		b.WriteString("  [#3ddc97::b]RO ")
 	}
 	a.status.SetText(b.String())
 }
@@ -371,19 +372,19 @@ func (a *App) renderHeader() {
 			failed++
 		}
 	}
-	mode := "[green]RO"
+	mode := "[#3ddc97]RO"
 	if a.opts.AllowWrite {
-		mode = "[red]RW"
+		mode = "[#ff5a5a]RW"
 	}
 	fmt.Fprintf(a.header.Clear(),
-		"[orange]Controller: [white]%s [%s[white]]\n[orange]Cmon:       [white]%s\n[orange]User:       [white]%s\n[orange]Clusters:   [white]%d ([red]%d failed[white])\n[orange]Alarms:     [%s]%d[white]\n[orange]c9s:        [white]%s",
+		"[#9ea6d8]Controller: [#e8eaf6]%s [%s[#e8eaf6]]\n[#9ea6d8]Cmon:       [#e8eaf6]%s\n[#9ea6d8]User:       [#e8eaf6]%s\n[#9ea6d8]Clusters:   [#e8eaf6]%d ([#ff5a5a]%d failed[#e8eaf6])\n[#9ea6d8]Alarms:     [%s]%d[#e8eaf6]\n[#9ea6d8]c9s:        [#e8eaf6]%s",
 		tview.Escape(a.host), mode, tview.Escape(a.rpc.BaseURL), tview.Escape(a.rpc.User),
-		len(a.clusters), failed, map[bool]string{true: "red", false: "white"}[alarms > 0], alarms, a.opts.Version)
+		len(a.clusters), failed, map[bool]string{true: tagBad, false: tagInk}[alarms > 0], alarms, a.opts.Version)
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "[fuchsia]<0>[white] all\n")
+	fmt.Fprintf(&b, "[#ff3fa5]<0>[#e8eaf6] all\n")
 	for i, c := range a.scopeClusters() {
-		fmt.Fprintf(&b, "[fuchsia]<%d>[white] %s\n", i+1, tview.Escape(rpc.Str(c, "cluster_name")))
+		fmt.Fprintf(&b, "[#ff3fa5]<%d>[#e8eaf6] %s\n", i+1, tview.Escape(rpc.Str(c, "cluster_name")))
 	}
 	a.scopes.SetText(b.String())
 
@@ -393,7 +394,7 @@ func (a *App) renderHeader() {
 	for _, ac := range a.actionsFor(a.res.Name) {
 		label := ac.Label
 		if ac.Write && !a.opts.AllowWrite {
-			label = "[gray]" + label
+			label = "[#7d84b2]" + label
 		}
 		hs = append(hs, hint{ac.Key, label})
 	}
@@ -410,7 +411,7 @@ func (a *App) renderHeader() {
 				continue
 			}
 			key := fmt.Sprintf("<%s>", hs[i].key)
-			fmt.Fprintf(&b, "[blue]%-9s[white]%s%s", key, hs[i].label, strings.Repeat(" ", max(1, 17-tview.TaggedStringWidth(hs[i].label))))
+			fmt.Fprintf(&b, "[#ff3fa5]%-9s[#e8eaf6]%s%s", key, hs[i].label, strings.Repeat(" ", max(1, 17-tview.TaggedStringWidth(hs[i].label))))
 		}
 		b.WriteString("\n")
 	}
@@ -479,7 +480,7 @@ func (a *App) tableKeys(ev *tcell.EventKey) *tcell.EventKey {
 				return nil
 			}
 			if ac.Write && !a.opts.AllowWrite {
-				a.flash("[yellow]read-only: quit and start c9s --write to " + strings.ToLower(ac.Label))
+				a.flash("[#ffb020]read-only: quit and start c9s --write to " + strings.ToLower(ac.Label))
 				return nil
 			}
 			ac.Run(row)
@@ -521,9 +522,9 @@ func (a *App) setScope(n int) {
 
 func (a *App) openPrompt(mode rune) {
 	a.promptMode = mode
-	label := "[aqua::b]:[-:-:-]"
+	label := "[#ff3fa5::b]:[-:-:-]"
 	if mode == '/' {
-		label = "[fuchsia::b]/[-:-:-]"
+		label = "[#ff3fa5::b]/[-:-:-]"
 	}
 	a.prompt.SetLabel(label).SetText("")
 	a.body.ResizeItem(a.prompt, 3, 0)
@@ -564,7 +565,7 @@ func (a *App) command(text string) {
 	}
 	res := FindResource(parts[0])
 	if res == nil {
-		a.flash("[red]unknown command: " + tview.Escape(parts[0]) + " (try :help)")
+		a.flash("[#ff5a5a]unknown command: " + tview.Escape(parts[0]) + " (try :help)")
 		return
 	}
 	a.mu.Lock()
@@ -598,7 +599,7 @@ func (a *App) describe() {
 }
 
 func (a *App) showDetail(name, title string, fn func() (string, bool)) {
-	a.detail.SetTitle("[aqua::b]" + title)
+	a.detail.SetTitle("[#ffffff::b]" + title)
 	a.detail.SetText("loading...")
 	a.pages.SwitchToPage("detail")
 	a.tv.SetFocus(a.detail)
@@ -652,7 +653,7 @@ func (a *App) help() {
 	a.showDetail("help", " help ", func() (string, bool) { return helpText, false })
 }
 
-const helpText = `[aqua::b]TOP 10 CLUSTERCONTROL TASKS[-:-:-]
+const helpText = `[#ff3fa5::b]TOP 10 CLUSTERCONTROL TASKS[-:-:-]
   1  Cluster & node health    :clusters  :nodes          enter = drill down
   2  Alarms                   :alarms                    a = acknowledge (ignore)
   3  Jobs                     :jobs                      enter = follow live log, ctrl-k = abort
@@ -664,7 +665,7 @@ const helpText = `[aqua::b]TOP 10 CLUSTERCONTROL TASKS[-:-:-]
   9  Top processes / queries  :top  :queries             ctrl-k = kill query (in :top)
  10  Logs                     :logs (DB log files)       enter = view file   (:events = cmon cluster log)
 
-[aqua::b]NAVIGATION[-:-:-]
+[#ff3fa5::b]NAVIGATION[-:-:-]
   :<view> [cluster-id]   open a view (cl, no, jo, al, bk, lo, ev, top, qu, maint)
   0-9                    scope: all clusters / cluster N from the header
   enter                  drill down: cluster > nodes > node logs > file

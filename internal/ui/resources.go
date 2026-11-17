@@ -145,18 +145,18 @@ func statusColor(s string) tcell.Color {
 	u := strings.ToUpper(s)
 	switch {
 	case u == "":
-		return tcell.ColorDefault
+		return colInk
 	case strings.Contains(u, "FAIL"), strings.Contains(u, "OFFLINE"), strings.Contains(u, "CRITICAL"),
 		strings.Contains(u, "ABORT"), strings.Contains(u, "SHUTDOWN"), strings.Contains(u, "ERR"):
-		return tcell.ColorRed
+		return colBad
 	case strings.Contains(u, "DEGRADED"), strings.Contains(u, "WARN"), strings.Contains(u, "RUNNING"),
 		strings.Contains(u, "RECOVER"), strings.Contains(u, "DEFINED"), strings.Contains(u, "SCHEDULED"),
 		strings.Contains(u, "MAINT"), u == "YES":
-		return tcell.ColorYellow
+		return colWarn
 	case strings.Contains(u, "COMPLETED"), strings.Contains(u, "FINISHED"):
-		return tcell.ColorGray
+		return colDim
 	default:
-		return tcell.ColorAqua
+		return colInk
 	}
 }
 
