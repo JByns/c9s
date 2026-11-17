@@ -7,8 +7,9 @@ PREFIX  ?= /usr/local
 build:
 	go build -ldflags "$(LDFLAGS)" -o bin/c9s .
 
-install: build
-	install -m 0755 bin/c9s $(PREFIX)/bin/c9s
+# install builds with Go if available, else downloads the release binary.
+install:
+	PREFIX=$(PREFIX) ./install.sh
 
 mock:
 	go run ./cmd/mockcmon

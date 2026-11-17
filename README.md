@@ -12,7 +12,7 @@ Cmon:       https://localhost:9501 <1> Redis Cluster          <t>     Top       
 User:       dba                    <2> MySQL Galera Cluster   <a>     Alarms      <:>   Command
 Clusters:   7 (1 failed)           <3> PostgreSQL Streaming   <s>     Start       </>   Filter
 Alarms:     0                      <4> MySQL Replication      <S>     Stop        <d>   Describe
-c9s:        0.1.0                  <5> MongoDB Replica        <ctrl-r> Restart    <esc> Back
+c9s:        0.1.1                  <5> MongoDB Replica        <ctrl-r> Restart    <esc> Back
 ╔════════════════════════════ nodes(MSSQL_AO_Async)[2] ═════════════════════════════╗
 ║ CID  CLUSTER         HOST             IP          PORT  TYPE   ROLE       STATUS    ║
 ║  35  MSSQL_AO_Async  ct-jessie-node4  10.10.16.8  1433  mssql  PRIMARY    Online    ║
@@ -28,7 +28,7 @@ c9s:        0.1.0                  <5> MongoDB Replica        <ctrl-r> Restart  
 **Getting started (follow in order)**
 
 1. [Before you start](#1-before-you-start)
-2. [Download c9s](#2-download-c9s)
+2. [Get c9s](#2-get-c9s)
 3. [Install c9s on the controller](#3-install-c9s-on-the-controller)
 4. [Start c9s and log in](#4-start-c9s-and-log-in)
 5. [Read the screen](#5-read-the-screen)
@@ -78,84 +78,70 @@ Check these on the controller before you install:
 |---|---|---|
 | You can SSH to the controller | `ssh root@<controller>` | A shell on the controller |
 | cmon is running | `systemctl status cmon` | `active (running)` |
-| CPU architecture | `uname -m` | `x86_64` → use the **amd64** files, `aarch64` → use the **arm64** files |
-| Linux distribution | `cat /etc/os-release` | Debian/Ubuntu → `.deb`, RHEL/Rocky/Alma/Oracle → `.rpm`, anything else → `.tar.gz` |
+| CPU architecture | `uname -m` | `x86_64` or `aarch64` (the installer picks the right file) |
+| git is installed | `git --version` | Any version. Install with `apt install git` or `dnf install git`. |
 | A ClusterControl user | Your ClusterControl login name | Its RSA key on the controller, or its password (see [step 4](#4-start-c9s-and-log-in)) |
 | Terminal size | Make your terminal window at least 120 × 30 | Smaller windows cut off columns |
 
-## 2. Download c9s
+## 2. Get c9s
 
-Releases are published on the GitHub releases page:
-**https://github.com/JByns/c9s/releases**
-
-> The repository is private for now. Ask the owner to add your GitHub account
-> under **Settings → Collaborators** before you can see the releases.
-
-Each release has these files. Pick the one that matches your controller from
-the checks in step 1:
-
-| File | Use it on |
-|---|---|
-| `c9s_<version>_linux_amd64.deb` | Debian / Ubuntu, x86_64 |
-| `c9s_<version>_linux_arm64.deb` | Debian / Ubuntu, aarch64 |
-| `c9s_<version>_linux_amd64.rpm` | RHEL / Rocky / Alma / Oracle, x86_64 |
-| `c9s_<version>_linux_arm64.rpm` | RHEL / Rocky / Alma / Oracle, aarch64 |
-| `c9s_linux_amd64.tar.gz` | Any Linux, x86_64 (plain binary) |
-| `c9s_linux_arm64.tar.gz` | Any Linux, aarch64 (plain binary) |
-| `checksums.txt` | SHA-256 checksums of all files |
-
-Choose one way to get the file onto the controller:
-
-**Option A: download in a browser, then copy it to the controller.**
-From your own computer:
+On the controller, clone the repository:
 
 ```bash
-scp c9s_0.1.0_linux_amd64.rpm root@<controller>:/tmp/
+git clone https://github.com/JByns/c9s.git
+cd c9s
 ```
 
-**Option B: download directly on the controller with the GitHub CLI.**
-This needs the `gh` tool on the controller and a one-time `gh auth login`:
+> **The repository is private for now.** Before you can clone it:
+>
+> 1. Ask the owner to add your GitHub account under **Settings → Collaborators**.
+> 2. Log in to GitHub on the controller once. GitHub does not accept your
+>    account password for `git clone`, so use the GitHub CLI:
+>
+>    ```bash
+>    gh auth login      # choose GitHub.com, HTTPS, "Login with a web browser"
+>    ```
+>
+>    (or use a personal access token as the password when `git clone` asks).
+
+To install a specific version instead of the newest code, check out its tag:
 
 ```bash
-gh release download v0.1.0 -R JByns/c9s -p 'c9s_0.1.0_linux_amd64.rpm' -D /tmp
-```
-
-> `git clone` with your GitHub password does not work: GitHub no longer
-> accepts account passwords for git. You do not need to clone the repository
-> to use c9s; the release files are all you need.
-
-Optional: check the file is not corrupted. Download `checksums.txt` too and
-run, in the same folder:
-
-```bash
-sha256sum --ignore-missing -c checksums.txt
+git checkout v0.1.1
 ```
 
 ## 3. Install c9s on the controller
 
-Run **one** of these on the controller, as root or with `sudo`, in the folder
-where the file is.
-
-**Debian / Ubuntu:**
+In the `c9s` folder, run the installer:
 
 ```bash
-sudo apt install ./c9s_0.1.0_linux_amd64.deb
+sudo ./install.sh
 ```
 
-**RHEL / Rocky / Alma / Oracle:**
+The installer picks the right way by itself:
+
+| If the controller has... | The installer... |
+|---|---|
+| Go (the version in `go.mod` or newer) | Builds c9s from the code you cloned |
+| No Go (the usual case) | Downloads the ready-made c9s for this version (the newest release at or before your checkout) and CPU type (`amd64`/`arm64`) from the GitHub release, checks its checksum, and installs it. It uses `gh` if you are logged in, else `curl`. |
+
+You should see something like:
+
+```
+==> downloading c9s_linux_amd64.tar.gz for v0.1.1 from github.com/JByns/c9s
+==> checksum OK
+==> installed /usr/local/bin/c9s (c9s 0.1.1)
+==> ready: run  c9s  (add --write to make changes)
+```
+
+The program is installed as `/usr/local/bin/c9s`. To install somewhere else,
+set `PREFIX`, for example without root into your home folder:
 
 ```bash
-sudo dnf install ./c9s_0.1.0_linux_amd64.rpm
+PREFIX=$HOME/.local ./install.sh       # installs ~/.local/bin/c9s
 ```
 
-The packages install the program as `/usr/bin/c9s`.
-
-**Any other Linux (plain binary):**
-
-```bash
-tar xzf c9s_linux_amd64.tar.gz
-sudo install -m 0755 c9s /usr/local/bin/c9s
-```
+`make install` does the same as `./install.sh`.
 
 **Check the install:**
 
@@ -163,7 +149,26 @@ sudo install -m 0755 c9s /usr/local/bin/c9s
 c9s version
 ```
 
-You should see `c9s 0.1.0` (or the version you installed).
+### Alternative: install a release package
+
+Instead of cloning, you can install a package from the releases page,
+**https://github.com/JByns/c9s/releases** (same access rules as the repo):
+
+| File | Use it on |
+|---|---|
+| `c9s_<version>_linux_amd64.deb` / `c9s_<version>_linux_arm64.deb` | Debian / Ubuntu |
+| `c9s_<version>_linux_amd64.rpm` / `c9s_<version>_linux_arm64.rpm` | RHEL / Rocky / Alma / Oracle |
+| `c9s_linux_amd64.tar.gz` / `c9s_linux_arm64.tar.gz` | Any Linux (plain binary) |
+
+Copy the file to the controller (`scp`, or `gh release download v0.1.1 -R JByns/c9s -p '<file>'`
+on the controller) and install it:
+
+```bash
+sudo apt install ./c9s_0.1.1_linux_amd64.deb     # Debian / Ubuntu
+sudo dnf install ./c9s_0.1.1_linux_amd64.rpm     # RHEL / Rocky / Alma / Oracle
+```
+
+Packages install the program as `/usr/bin/c9s`.
 
 ## 4. Start c9s and log in
 
@@ -615,17 +620,27 @@ c9s rpc /v2/alarm/ getAlarms '{"cluster_id":35}'
 
 ## Upgrade and uninstall
 
-**Upgrade:** download the new release file ([step 2](#2-download-c9s)) and
-install it the same way ([step 3](#3-install-c9s-on-the-controller)). The
-package manager replaces the old version. For the plain binary, run the same
-`install` command again. Check with `c9s version`.
+**Upgrade** (installed with `install.sh`): in your `c9s` folder, get the new
+code and run the installer again:
+
+```bash
+cd c9s
+git pull
+sudo ./install.sh
+c9s version
+```
+
+Pulling alone does not change the installed program; `./install.sh` does.
+
+**Upgrade** (installed from a package): install the new release package the
+same way; the package manager replaces the old version.
 
 **Uninstall:**
 
 ```bash
 sudo apt remove c9s        # Debian / Ubuntu
 sudo dnf remove c9s        # RHEL / Rocky / Alma / Oracle
-sudo rm /usr/local/bin/c9s # plain binary
+sudo rm /usr/local/bin/c9s # installed with install.sh or the plain binary
 ```
 
 c9s keeps no files of its own, so nothing else needs cleaning up.
@@ -634,7 +649,11 @@ c9s keeps no files of its own, so nothing else needs cleaning up.
 
 | Message or symptom | Cause and fix |
 |---|---|
-| `c9s: command not found` | Not installed, or `/usr/local/bin` is not in your `PATH` (plain binary). Repeat [step 3](#3-install-c9s-on-the-controller). |
+| `git clone`: `Invalid username or token` / `Authentication failed` | The repository is private and GitHub does not accept account passwords. Run `gh auth login` first (see [step 2](#2-get-c9s)). |
+| `install.sh`: `could not download ...` | The release could not be fetched: the repository is private and you are not logged in. Run `gh auth login`, then `sudo ./install.sh` again. |
+| `install.sh`: `cannot write to /usr/local/bin` | Run it with `sudo`, or use `PREFIX=$HOME/.local ./install.sh`. |
+| `install.sh`: `this checkout has no release tag` | You cloned without tags or are on a branch with no release yet. Run `git fetch --tags`, or `git checkout v0.1.1`. |
+| `c9s: command not found` | Not installed, or its folder is not in your `PATH`. Repeat [step 3](#3-install-c9s-on-the-controller). |
 | `controller ... is not this machine` | The client config points at another host. c9s only runs on the controller: SSH to it and run c9s there. |
 | `cannot reach cmon at ...` | You are not on the controller, or cmon is stopped. Check `systemctl status cmon`; start it with `systemctl start cmon`. |
 | `login as ... failed` | Wrong user, key or password. Try `c9s --user <name>` and type the password. If key login fails, check that `~/.s9s/<user>.key` is the key registered for that user in ClusterControl. |
@@ -695,7 +714,8 @@ make linux           # bin/c9s-linux-amd64 and bin/c9s-linux-arm64
 make test            # go vet + unit tests
 ```
 
-To try a build on a controller, copy it there:
+`make install` runs `install.sh`, which builds with your Go. To try a build on
+a controller without Go, copy it there:
 
 ```bash
 scp bin/c9s-linux-amd64 root@<controller>:/usr/local/bin/c9s
