@@ -280,7 +280,8 @@ c9s --write
 The header now shows `[RW]` in red. Even in write mode:
 
 1. **Every change asks first.** A red **confirm** box shows what will happen.
-   Choose **OK** to go ahead or **Cancel** (or `esc`) to stop.
+   **Cancel** is highlighted first. Press `→` to highlight **OK** and `enter`
+   to go ahead, or `enter` on **Cancel** (or `esc`) to stop.
 2. **Risky changes need the name typed.** Stop node, promote, rolling restart
    and restore ask you to type the node or cluster name exactly. If it does not
    match, nothing happens and the status says `not confirmed`.
@@ -351,7 +352,8 @@ Shortcut: on a cluster row, `j` opens the jobs of that cluster.
    - **Backup host:** `auto` lets ClusterControl choose, or pick a node.
    - **Directory:** where the backup is stored on the host
      (default `/root/backups`).
-3. Use `tab` to move between fields and choose **Create**.
+3. Use `↓`/`↑` (or `tab`) to move between fields, then highlight **Create**
+   and press `enter`.
 4. The status shows `job <id> created` and the backup job's live log opens.
 5. When it finishes, the backup appears in `:backups` with status `Completed`.
 
@@ -548,8 +550,10 @@ node.
 | `?` | Help |
 | `ctrl-c` | Quit |
 
-In confirm boxes and forms: `tab` moves between fields and buttons, `enter`
-presses the button, `esc` cancels.
+In confirm boxes and forms: `←`/`→` move between the buttons, `↑`/`↓` (or
+`tab`/`shift-tab`) move between fields and buttons, `enter` presses the
+highlighted button, `esc` cancels. **Cancel** is highlighted first, so pressing
+`enter` straight away never changes anything.
 
 ### Commands (`:`)
 

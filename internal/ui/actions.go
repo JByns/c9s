@@ -109,10 +109,42 @@ func (a *App) closeModal(name string) {
 	}
 }
 
+// arrowNav lets the arrow keys move around a form, not only tab:
+// left/right between buttons, up/down between fields and buttons. Text
+// editing in input fields and an open dropdown list keep their arrows.
+func arrowNav(form *tview.Form) *tview.Form {
+	tab := func(back bool) *tcell.EventKey {
+		if back {
+			return tcell.NewEventKey(tcell.KeyBacktab, 0, tcell.ModNone)
+		}
+		return tcell.NewEventKey(tcell.KeyTab, 0, tcell.ModNone)
+	}
+	form.SetInputCapture(func(ev *tcell.EventKey) *tcell.EventKey {
+		item, button := form.GetFocusedItemIndex()
+		if item >= 0 {
+			if dd, ok := form.GetFormItem(item).(*tview.DropDown); ok && dd.IsOpen() {
+				return ev
+			}
+		}
+		switch ev.Key() {
+		case tcell.KeyUp:
+			return tab(true)
+		case tcell.KeyDown:
+			return tab(false)
+		case tcell.KeyLeft, tcell.KeyRight:
+			if button >= 0 {
+				return tab(ev.Key() == tcell.KeyLeft)
+			}
+		}
+		return ev
+	})
+	return form
+}
+
 // confirm asks yes/no. With word set, the user has to type it (for actions
 // that are hard to undo, like stop, promote, restore).
 func (a *App) confirm(question, word string, onYes func()) {
-	form := tview.NewForm()
+	form := arrowNav(tview.NewForm())
 	form.SetBorder(true).SetTitle(" [red::b]confirm ").SetBorderColor(tcell.ColorRed)
 	text := tview.NewTextView().SetDynamicColors(true).SetText(question)
 	var typed *tview.InputField
@@ -277,7 +309,7 @@ func (a *App) toggleMaintenance(r rpc.Map) {
 		a.endMaintenanceFor(cid(r), isNode, r)
 		return
 	}
-	form := tview.NewForm()
+	form := arrowNav(tview.NewForm())
 	form.AddInputField("Duration (minutes):", "60", 10, tview.InputFieldInteger, nil)
 	form.AddInputField("Reason:", "maintenance from c9s", 40, nil, nil)
 	form.AddButton("Cancel", func() { a.closeModal("maint") })
@@ -404,7 +436,7 @@ func (a *App) createBackup(r rpc.Map) {
 		}
 	}
 	name := rpc.Str(cl, "cluster_name")
-	form := tview.NewForm()
+	form := arrowNav(tview.NewForm())
 	form.AddInputField("Method:", defaultBackupMethod(rpc.Str(cl, "cluster_type"), rpc.Str(cl, "vendor")), 24, nil, nil)
 	form.AddDropDown("Backup host:", hosts, 0, nil)
 	form.AddInputField("Directory:", "/root/backups", 40, nil, nil)
