@@ -74,8 +74,8 @@ download() {
 		base="https://github.com/$repo/releases/download/$tag"
 		if ! curl -fsSL -o "$tmp/$asset" "$base/$asset"; then
 			die "could not download $base/$asset
-  If the repository is private, log in first:  gh auth login
-  (or install Go $need_go+ and run this script again to build from source)"
+  Check that this machine can reach github.com (set https_proxy if needed),
+  or install Go $need_go+ and run this script again to build from source"
 		fi
 		curl -fsSL -o "$tmp/checksums.txt" "$base/checksums.txt" || true
 	else

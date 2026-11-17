@@ -92,17 +92,7 @@ git clone https://github.com/JByns/c9s.git
 cd c9s
 ```
 
-> **The repository is private for now.** Before you can clone it:
->
-> 1. Ask the owner to add your GitHub account under **Settings → Collaborators**.
-> 2. Log in to GitHub on the controller once. GitHub does not accept your
->    account password for `git clone`, so use the GitHub CLI:
->
->    ```bash
->    gh auth login      # choose GitHub.com, HTTPS, "Login with a web browser"
->    ```
->
->    (or use a personal access token as the password when `git clone` asks).
+No GitHub account or login is needed: the repository is public.
 
 To install a specific version instead of the newest code, check out its tag:
 
@@ -152,7 +142,7 @@ c9s version
 ### Alternative: install a release package
 
 Instead of cloning, you can install a package from the releases page,
-**https://github.com/JByns/c9s/releases** (same access rules as the repo):
+**https://github.com/JByns/c9s/releases**:
 
 | File | Use it on |
 |---|---|
@@ -160,8 +150,11 @@ Instead of cloning, you can install a package from the releases page,
 | `c9s_<version>_linux_amd64.rpm` / `c9s_<version>_linux_arm64.rpm` | RHEL / Rocky / Alma / Oracle |
 | `c9s_linux_amd64.tar.gz` / `c9s_linux_arm64.tar.gz` | Any Linux (plain binary) |
 
-Copy the file to the controller (`scp`, or `gh release download v0.1.1 -R JByns/c9s -p '<file>'`
-on the controller) and install it:
+Download it on the controller and install it, for example:
+
+```bash
+curl -fLO https://github.com/JByns/c9s/releases/download/v0.1.1/c9s_0.1.1_linux_amd64.rpm
+```
 
 ```bash
 sudo apt install ./c9s_0.1.1_linux_amd64.deb     # Debian / Ubuntu
@@ -649,8 +642,7 @@ c9s keeps no files of its own, so nothing else needs cleaning up.
 
 | Message or symptom | Cause and fix |
 |---|---|
-| `git clone`: `Invalid username or token` / `Authentication failed` | The repository is private and GitHub does not accept account passwords. Run `gh auth login` first (see [step 2](#2-get-c9s)). |
-| `install.sh`: `could not download ...` | The release could not be fetched: the repository is private and you are not logged in. Run `gh auth login`, then `sudo ./install.sh` again. |
+| `install.sh`: `could not download ...` | The controller cannot reach github.com (no internet access or a proxy is needed). Copy a release file in by hand ([alternative](#alternative-install-a-release-package)), or set `https_proxy` and run `sudo ./install.sh` again. |
 | `install.sh`: `cannot write to /usr/local/bin` | Run it with `sudo`, or use `PREFIX=$HOME/.local ./install.sh`. |
 | `install.sh`: `this checkout has no release tag` | You cloned without tags or are on a branch with no release yet. Run `git fetch --tags`, or `git checkout v0.1.1`. |
 | `c9s: command not found` | Not installed, or its folder is not in your `PATH`. Repeat [step 3](#3-install-c9s-on-the-controller). |
