@@ -21,6 +21,10 @@ c9s:        0.1.1                  <5> MongoDB Replica        <ctrl-r> Restart  
  ct-jessie-cc1:/MSSQL_AO_Async/nodes                                 ⟳ 5s (0s ago)  RO
 ```
 
+It talks only to the cmon on the machine it runs on, and cmon does the work
+on the database nodes. The [diagram in How c9s works](#how-c9s-works) shows
+the whole picture, from install to the database nodes.
+
 ---
 
 ## Contents
@@ -465,12 +469,51 @@ If a cluster has no files in `:logs`, cmon has not collected log files for it
 ## How c9s works
 
 ```
- you ──ssh──▶ ┌──────────── ClusterControl controller ────────────┐
-              │  ┌───────┐  RPC v2 (127.0.0.1:9501)  ┌──────────┐  │   SSH / DB    ┌──────────┐
-              │  │  c9s  │ ────────────────────────▶ │   cmon   │ ─┼─────────────▶ │ DB nodes │
-              │  └───────┘ ◀──────────────────────── └──────────┘  │               └──────────┘
-              └────────────────────────────────────────────────────┘
+                ┌──────────────────────────────────────────┐
+                │ github.com/JByns/c9s                     │
+                │ source code + release binaries           │
+                └────────────────────┬─────────────────────┘
+                                     │ ① git clone + sudo ./install.sh
+                                     ▼   (build with Go, or download)
+ you ──ssh──▶ ┌──────────────── ClusterControl controller ───────────────────┐
+              │                                                              │
+              │  ┌────────────────────┐  ③ log in       ┌─────────────────┐  │
+              │  │ c9s                │ ──────────────▶ │ cmon            │  │
+              │  │ /usr/local/bin/c9s │                 │ RPC v2 API      │  │
+              │  │                    │  ④ views        │ 127.0.0.1:9501  │  │
+              │  │ clusters, nodes,   │ ◀─────────────▶ │                 │  │ ⑥ SSH / SQL  ┌──────────┐
+              │  │ jobs, alarms,      │   every 5 s     │                 │ ─┼────────────▶ │ DB nodes │
+              │  │ backups, logs ...  │                 │                 │  │              │ (every   │
+              │  │                    │  ⑤ actions      │                 │  │              │ cluster) │
+              │  │                    │ ──────────────▶ │ runs each as a  │  │              └──────────┘
+              │  └─────────▲──────────┘   (--write)     │ job → job list, │  │
+              │            │ ② reads at start           │ audit log       │  │
+              │  ┌─────────┴──────────────────────┐     └─────────────────┘  │
+              │  │ ~/.s9s/s9s.conf or             │                          │
+              │  │   /etc/s9s.conf  user, address │                          │
+              │  │ ~/.s9s/<user>.key  key login   │                          │
+              │  │ else password / $CC_PASSWORD   │                          │
+              │  └────────────────────────────────┘                          │
+              └──────────────────────────────────────────────────────────────┘
 ```
+
+1. **Install.** You clone the repository on the controller and run
+   `install.sh`. It builds c9s with Go, or downloads the release binary, and
+   puts it in `/usr/local/bin`.
+2. **Find the login.** When you start `c9s`, it reads the ClusterControl
+   client config for the user and cmon address, and uses the user's key if
+   there is one. Without them it asks for a user name and password.
+3. **Log in.** c9s logs in to the cmon on the same machine as a normal
+   ClusterControl user.
+4. **Show views.** Each view is a table that c9s fills from cmon's RPC v2 API
+   and refreshes every 5 seconds.
+5. **Run actions.** In write mode (`--write`), every change, such as a
+   restart, backup or failover, is sent to cmon as a job. It shows in the job
+   list and the audit log like any other ClusterControl job.
+6. **Reach the databases.** cmon, not c9s, connects to the database nodes and
+   does the work. c9s never logs in to a database node itself.
+
+Some details:
 
 - c9s is a single static Go binary. It has no agent, no database and no
   server side of its own, and it writes no files.
